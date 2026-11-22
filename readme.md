@@ -1,8 +1,8 @@
-# 爆枪英雄 XML 解析器
+# 爆枪英雄资源提取器
 
-https://github.com/lzyllll/bqyxXmlParser
+https://github.com/lzyllll/bqyxExtractor
 
-从 4399 下载爆枪英雄 SWF，用 FFDec 反编译，再把 XML 解析成 JSON。
+从 4399 下载爆枪英雄 SWF，用 FFDec 反编译 XML 和资源，再把 XML 解析成 JSON、提取图片。
 
 ## 环境
 
@@ -82,7 +82,7 @@ resources/icons/         预置通用UI图标、强化星级与品质底框
 
 ## 使用流程 (Click CLI)
 
-本工具提供基于 `click` 的全功能命令行界面，涵盖 SWF 资源下载更新与 XML 多版本配置解析。
+本工具提供基于 `click` 的全功能命令行界面，涵盖 SWF 资源下载、图片解析提取与 XML 多版本配置解析。
 
 ### 1. 查看帮助与模块列表
 
@@ -94,7 +94,7 @@ python main.py --help
 python main.py parse --list
 ```
 
-### 2. SWF 资源流程 (`swf`)
+### 2. SWF 下载与反编译 (`swf`)
 
 ```bash
 # 下载主 SWF，反编译 XML/AS3，并补齐依赖资源 SWF
@@ -102,18 +102,19 @@ python main.py swf update
 
 # 强制重新下载（忽略本地已下载版本记录）
 python main.py swf update --force
+```
 
+### 3. 图片资源解析
+
+```bash
 # 从 equipGather 提取并反编译装备/时装图片与 SVG
 python main.py swf equip
 
 # 根据 AS3 源码全自动提取对应版本的全量图片、装备部件与 UI 图标 (详见 docs/ASSET_EXTRACTION_GUIDE.md)
 python main.py swf assets -v v3680
-
-# 一键完整执行 SWF 资源更新与装备图片提取
-python main.py swf all
 ```
 
-### 3. XML 配置解析 (`parse`)
+### 4. XML 配置解析 (`parse`)
 
 ```bash
 # 一键全量解析当前最新版本的所有 17 个模块并生成 JSON
@@ -544,4 +545,3 @@ python test/parser_factory_test.py
 # 运行数据对比工具测试
 python test/compare_test.py
 ```
-
