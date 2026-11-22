@@ -43,7 +43,54 @@
 - 定位 `newGun`、`specialGun`、`weapon`。
 - 提取武器全部 SVG 矢量图形与高清位图 PNG。
 
-#### ④ 前端通用系统图标与品质底框 (`extract_ui_system_icons`)
+#### ④ BasicUI 直接元件提取 (`extract_basic_ui`)
+- 从 `Gaming.as` 中读取直接加载的 `BasicUI*.swf`，例如 `swf/UI/BasicUI370.swf`。
+- 将该 SWF 作为独立资源包处理，不再只提取固化的品质底框。
+- 导出 `images`、`symbolClass` 和 `sprite`，按符号类名保存到 `img/BasicUI/`。
+- 常见产物包括 `equipGrip.png`、`armsGrip.png`、`bagUI.png`、`gripDelBtn.png`、`pagePrevBtn.png`。
+- 多帧元件按 `<符号名>_<帧号>.png` 保存，例如 `someMc_1.png`、`someMc_2.png`。
+
+```text
+output/<version>/assets/img/BasicUI/
+├── bagUI.png
+├── equipGrip.png
+├── armsGrip.png
+├── gripDelBtn.png
+└── pagePrevBtn.png
+```
+
+#### ⑤ EffectGather 聚合效果包提取 (`extract_effect_gather`)
+- 定位 `Gaming.as` 加载的 `swf/effect/effectGather*.swf`，默认查找模式为 `effectGather*.swf`。
+- 对聚合 SWF 使用 FFDec 导出 `binaryData`，得到其中嵌套的多个子效果二进制包（`.bin`）。
+- 将 `.bin` 重建为临时 SWF；再提取其中的 `image`、`symbolClass` 和 `sprite`。
+- 每个子效果包按聚合包中的子包名建立独立目录，图片按符号名保存为 PNG。
+
+例如，聚合包中的 `dropEffect` 是资源地址 `dropEffect/<符号名>` 对应的子包：
+
+```text
+output/<version>/assets/img/EffectGather/
+└── dropEffect/
+    ├── arms.png
+    ├── hurtMine.png
+    ├── hammerMine.png
+    ├── addCoin.png
+    └── ...
+```
+
+其中 `dropEffect` 来自聚合 SWF 内部的子包名，`arms`、`hurtMine` 来自该子 SWF 的符号名。多帧 Sprite 会保存为 `<符号名>_<帧号>.png`。
+
+提取流程可以概括为：
+
+```text
+effectGather*.swf
+  -> binaryData (.bin)
+  -> 临时子 SWF
+  -> EffectGather/<子包名>/<符号名>.png
+```
+
+常见子包名包括 `dropEffect`、其他嵌入在 `effectGather` 中的效果资源包。当前未导出到符号名目录的空或纯时间轴内容会自动跳过。
+
+#### ⑥ 前端通用系统图标与品质底框 (`extract_ui_system_icons`)
 对应 `D:\bqyx\rs\assets\icons` 与 `output/<version>/assets/icons`：
 - **主功能导航 SVG**：
   - `achieve.svg` ← `IconGather/achieve.svg`（成就勋章）
@@ -94,6 +141,15 @@ output/v3680/assets/
     │   ├── aintSuit/
     │   ├── goshawkSuit/
     │   └── ...
+    ├── BasicUI/                    # BasicUI 独立直接元件与 Sprite (PNG)
+    │   ├── bagUI.png
+    │   ├── equipGrip.png
+    │   └── ...
+    ├── EffectGather/               # 聚合效果包拆分后的子包资源 (PNG)
+    │   └── dropEffect/
+    │       ├── arms.png
+    │       ├── hurtMine.png
+    │       └── ...
     ├── equipIcon/                   # 基础装备槽位图标 (13 个 SVG)
     ├── FoodUI/                      # 食物补给类矢量图标 (29 个 SVG)
     ├── IconGather/                  # 游戏通用图标 (328 个 SVG)
@@ -146,5 +202,9 @@ result = extractor.run(sync_to_rs_icons=True)
 
 # 或单独提取/同步前端系统图标库
 extractor.extract_ui_system_icons()
-```
 
+# 单独提取 BasicUI 或 effectGather 中的子效果包
+loaders = extractor.as3_parser.extract_swf_loaders(extractor.scripts_dir)
+extractor.extract_basic_ui(loaders)
+extractor.extract_effect_gather()
+```

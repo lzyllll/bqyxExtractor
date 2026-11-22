@@ -154,6 +154,90 @@ class AssetExtractor:
 
         return stats
 
+    def extract_basic_ui(self, loaders: List[Tuple[str, str, str]]) -> int:
+        """将 BasicUI SWF 中的图片与 Sprite 按符号名直接导出到 BasicUI 文件夹。"""
+        basic_ui = next((item for item in loaders if item[1] == "BasicUI"), None)
+        if not basic_ui:
+            logger.warning("未在 Gaming.as 中找到 BasicUI 加载配置")
+            return 0
+
+        rel_path, label, _ = basic_ui
+        swf_path = self.find_actual_swf(rel_path, label)
+        if not swf_path:
+            logger.warning("未找到 BasicUI SWF 文件: %s", rel_path)
+            return 0
+
+        dest_dir = self.img_output_dir / "BasicUI"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        count = 0
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+
+            sym_dir = tmp_path / "symbols"
+            sym_exporter = FFDecExporter(output_dir=sym_dir, input_swf=swf_path)
+            sym_exporter.export_symbol_class()
+            symbol_mapping = self._read_symbols(sym_dir)
+
+            image_dir = tmp_path / "images"
+            image_exporter = FFDecExporter(output_dir=image_dir, input_swf=swf_path)
+            image_exporter.export_images(formats="image:png")
+
+            for image_file in image_dir.rglob("*"):
+                if not image_file.is_file() or image_file.suffix.lower() != ".png":
+                    continue
+                name = re.sub(r"\.(png|jpg|jpeg)$", "", image_file.name, flags=re.I)
+                name = re.sub(r"^image[_-]?|^DefineImage[_-]?", "", name, flags=re.I)
+                name = re.sub(r"[^A-Za-z0-9_.-]", "_", name).strip("._")
+                if not name:
+                    continue
+                dest_file = dest_dir / f"{name}.png"
+                if not dest_file.exists() or dest_file.stat().st_size != image_file.stat().st_size:
+                    dest_file.write_bytes(image_file.read_bytes())
+                    count += 1
+
+            sprite_dir = tmp_path / "sprites"
+            sprite_exporter = FFDecExporter(output_dir=sprite_dir, input_swf=swf_path)
+            sprite_exporter.export_sprites(formats="sprite:png")
+
+            for sdir in sprite_dir.rglob("DefineSprite_*"):
+                if not sdir.is_dir():
+                    continue
+
+                match = re.match(r"^DefineSprite_(\d+)(?:_(.+))?$", sdir.name)
+                if not match:
+                    continue
+                character_id = match.group(1)
+                folder_name = match.group(2)
+                symbol_name = symbol_mapping.get(character_id) or folder_name
+                if not symbol_name:
+                    continue
+
+                symbol_name = re.sub(r"[^A-Za-z0-9_.-]", "_", symbol_name).strip("._")
+                if not symbol_name:
+                    continue
+
+                frame_files = sorted(
+                    (p for p in sdir.glob("*.png") if p.is_file()),
+                    key=lambda p: int(p.stem) if p.stem.isdigit() else 10**9,
+                )
+                if len(frame_files) == 1:
+                    output_names = [symbol_name]
+                else:
+                    output_names = [
+                        f"{symbol_name}_{frame.stem}" if frame.stem.isdigit() else f"{symbol_name}_{frame.stem}"
+                        for frame in frame_files
+                    ]
+
+                for frame_file, output_name in zip(frame_files, output_names):
+                    dest_file = dest_dir / f"{output_name}.png"
+                    if not dest_file.exists() or dest_file.stat().st_size != frame_file.stat().st_size:
+                        dest_file.write_bytes(frame_file.read_bytes())
+                        count += 1
+
+        logger.info("  ✓ BasicUI 完成直接文件夹导出: %d 个 PNG，保存至 %s", count, dest_dir)
+        return count
+
     def _process_one_suit(
         self,
         bin_file: Path,
@@ -275,6 +359,141 @@ class AssetExtractor:
 
             logger.info("  ✓ EquipGather 完成导出: %d 个套装目录 (PNG+SVG)", total_suits)
             return total_suits
+
+    def _effect_sub_name(self, bin_file: Path) -> str:
+        """从 effectGather 导出的二进制文件名解析子包名。"""
+        name = re.sub(r"^\d+_", "", bin_file.name)
+        name = re.sub(r"^effectGather\d+_fla\.MainTimeline_", "", name)
+        name = re.sub(r"Class_dataClass(?:\.bin)?$", "", name)
+        name = re.sub(r"\.bin$", "", name)
+        name = re.sub(r"[^A-Za-z0-9_.-]", "_", name).strip("._")
+        return name
+
+    def _process_one_effect(
+        self,
+        bin_file: Path,
+        effect_output_base: Path,
+        tmp_base: Path,
+    ) -> Optional[str]:
+        """拆出一个 effectGather 子包并按符号名导出 PNG。"""
+        sub_name = self._effect_sub_name(bin_file)
+        if not sub_name:
+            return None
+
+        work_dir = tmp_base / f"effect_{sub_name}"
+        work_dir.mkdir(parents=True, exist_ok=True)
+        sub_swf = work_dir / f"{sub_name}.swf"
+        sub_swf.write_bytes(bin_file.read_bytes())
+
+        exporter = FFDecExporter(output_dir=work_dir / "export", input_swf=sub_swf)
+        exporter.export_images(formats="image:png")
+        exporter.export_symbol_class()
+        exporter.export_sprites(formats="sprite:png")
+
+        dest_dir = effect_output_base / sub_name
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        symbols = self._read_symbols(work_dir / "export")
+        exported = 0
+
+        export_dir = work_dir / "export"
+        for sdir in export_dir.rglob("DefineSprite_*"):
+            if not sdir.is_dir():
+                continue
+
+            match = re.match(r"^DefineSprite_(\d+)(?:_(.+))?$", sdir.name)
+            if not match:
+                continue
+
+            character_id = match.group(1)
+            folder_name = match.group(2)
+            symbol_name = folder_name or symbols.get(character_id)
+            if not symbol_name:
+                continue
+
+            symbol_name = re.sub(r"[^A-Za-z0-9_.-]", "_", symbol_name).strip("._")
+            frame_files = sorted(
+                (p for p in sdir.glob("*.png") if p.is_file()),
+                key=lambda p: int(p.stem) if p.stem.isdigit() else 10**9,
+            )
+            for frame_file in frame_files:
+                if len(frame_files) == 1:
+                    output_name = symbol_name
+                else:
+                    output_name = f"{symbol_name}_{frame_file.stem}"
+
+                dest_file = dest_dir / f"{output_name}.png"
+                if not dest_file.exists() or dest_file.stat().st_size != frame_file.stat().st_size:
+                    dest_file.write_bytes(frame_file.read_bytes())
+                    exported += 1
+
+        for img_file in export_dir.rglob("*.png"):
+            if img_file.parent.name.startswith("DefineSprite_"):
+                continue
+
+            clean_name = None
+            if "_" in img_file.stem:
+                clean_name = img_file.stem.split("_", 1)[1]
+            elif img_file.stem in symbols:
+                clean_name = symbols[img_file.stem]
+
+            if not clean_name:
+                continue
+
+            clean_name = re.sub(r"[^A-Za-z0-9_.-]", "_", clean_name).strip("._")
+            if clean_name.endswith("Bmp"):
+                clean_name = clean_name[:-3]
+            if not clean_name:
+                continue
+
+            dest_file = dest_dir / f"{clean_name}.png"
+            if not dest_file.exists() or dest_file.stat().st_size != img_file.stat().st_size:
+                dest_file.write_bytes(img_file.read_bytes())
+                exported += 1
+
+        if exported == 0:
+            try:
+                dest_dir.rmdir()
+            except Exception:
+                pass
+            return None
+        return sub_name
+
+    def extract_effect_gather(self) -> int:
+        """拆分 effectGather，并按子包和符号名导出 PNG。"""
+        candidates = list(self.swf_dir.rglob("effectGather*.swf"))
+        if not candidates:
+            logger.warning("在 %s 未找到 effectGather*.swf", self.swf_dir)
+            return 0
+
+        effect_gather_swf = candidates[0]
+        effect_output_base = self.img_output_dir / "EffectGather"
+        effect_output_base.mkdir(parents=True, exist_ok=True)
+
+        logger.info("正在反编译效果汇总包: %s...", effect_gather_swf.name)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            exporter = FFDecExporter(output_dir=tmp_path, input_swf=effect_gather_swf)
+            exporter.export_binary_data()
+
+            bin_files = list(tmp_path.rglob("*.bin"))
+            logger.info("  从 effectGather 中提取到 %d 个子效果二进制文件", len(bin_files))
+
+            extracted = 0
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {
+                    executor.submit(self._process_one_effect, bf, effect_output_base, tmp_path): bf
+                    for bf in bin_files
+                }
+                for fut in concurrent.futures.as_completed(futures):
+                    try:
+                        if fut.result():
+                            extracted += 1
+                    except Exception as exc:
+                        bf = futures[fut]
+                        logger.warning("提取效果包 %s 出错: %s", bf.name, exc)
+
+        logger.info("  ✓ EffectGather 完成导出: %d 个效果包目录", extracted)
+        return extracted
 
     def extract_weapon_swfs(self, loaders: List[Tuple[str, str, str]]) -> Dict[str, int]:
         """提取武器和特殊兵器的位图 PNG。"""
@@ -537,8 +756,14 @@ class AssetExtractor:
         # 3. 提取所有标准图标 SWF (纯 PNG)
         icon_stats = self.extract_icon_swfs(loaders)
 
+        # BasicUI 直接按符号名导出到独立文件夹
+        basic_ui_count = self.extract_basic_ui(loaders)
+
         # 4. 提取装备汇总包 (equipGather 纯 PNG 并行提取)
         suit_count = self.extract_equip_gather()
+
+        # EffectGather 按子包名和符号名直接导出到独立文件夹
+        effect_count = self.extract_effect_gather()
 
         # 5. 提取枪械/兵器类 SWF (纯 PNG)
         weapon_stats = self.extract_weapon_swfs(loaders)
@@ -567,9 +792,10 @@ class AssetExtractor:
 
         return {
             "icons": icon_stats,
+            "basic_ui": basic_ui_count,
             "equip_suits": suit_count,
+            "effect_gather": effect_count,
             "weapons": weapon_stats,
             "ui_system_icons": ui_icon_count,
             "rs_synced_files": rs_synced_count,
         }
-

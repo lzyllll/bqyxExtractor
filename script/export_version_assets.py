@@ -72,7 +72,9 @@ def main():
     print(f"  - 图标分类: {len(result.get('icons', {}))} 个分类")
     for k, v in result.get("icons", {}).items():
         print(f"      • {k}: {v} 个 PNG")
+    print(f"  - BasicUI: {result.get('basic_ui', 0)} 个 PNG")
     print(f"  - 装备套装 (EquipGather): {result.get('equip_suits', 0)} 套")
+    print(f"  - EffectGather: {result.get('effect_gather', 0)} 个效果包")
     print(f"  - 武器兵器分类: {len(result.get('weapons', {}))} 个分类")
     for k, v in result.get("weapons", {}).items():
         print(f"      • {k}: {v} 个 PNG")
@@ -82,4 +84,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
