@@ -7,24 +7,24 @@ from pathlib import Path
 _LOGGER_NAME = "bqyx_parser"
 
 
-def get_logger(name: str = _LOGGER_NAME) -> logging.Logger:
+def get_logger(name: str = _LOGGER_NAME, level: int = logging.INFO) -> logging.Logger:
     """返回项目 logger。重复调用不会叠加 handler。"""
     logger = logging.getLogger(name)
     if logger.handlers:
         return logger
 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(level)
     handler = logging.StreamHandler()
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(level)
     handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
     logger.addHandler(handler)
     logger.propagate = False
     return logger
 
 
-def add_file_handler(log_path: str | Path, level: int = logging.DEBUG) -> logging.Logger:
+def add_file_handler(log_path: str | Path, level: int = logging.INFO) -> logging.Logger:
     """额外写一份日志文件，方便回头看对比差异。"""
-    logger = get_logger()
+    logger = get_logger(level=level)
     log_path = Path(log_path)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     resolved = log_path.resolve()
