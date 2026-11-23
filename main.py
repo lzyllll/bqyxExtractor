@@ -50,7 +50,7 @@ def swf_update(force: bool, swf_dir: str) -> None:
 @click.option("-v", "--version", default=None, help="游戏版本号 (默认: 最新记录版本)")
 @click.option("-d", "--swf-dir", default=None, help="SWF 存放目录 (默认: swf_assets/<version>)")
 @click.option("-o", "--output", default=None, help="输出 assets 目录 (默认: output/<version>/assets)")
-@click.option("-e", "--equip", "-n", "--name", "target_equip", default=None, help="指定解析的装备/套装名称 (支持模糊匹配，默认全部)")
+@click.option("-e", "--equip", "-n", "--name", "target_equip", default=None, help="指定解析的装备/套装名称 (精确匹配，如 madpur；默认全部)")
 def swf_equip(
     version: str | None,
     swf_dir: str | None,

@@ -327,7 +327,7 @@ class AssetExtractor:
     def extract_equip_gather(self, target_equip: str | None = None) -> int:
         """反编译 equipGather，并行提取所有套装各部位和时装的位图 PNG。
 
-        :param target_equip: 指定提取的装备/套装名称（支持模糊匹配或逗号分隔的多个名称），默认 None 提取全部。
+        :param target_equip: 指定提取的装备/套装名称（精确匹配），默认 None 提取全部。
         """
         candidates = list(self.swf_dir.rglob("equipGather*.swf"))
         if not candidates:
@@ -348,20 +348,19 @@ class AssetExtractor:
             bin_files = list(tmp_path.glob("*.bin"))
             logger.info("  从 equipGather 中提取到 %d 个子套装/装备二进制文件", len(bin_files))
 
-            # 按指定装备名称/关键字过滤
+            # 按指定装备名称精确过滤
             if target_equip:
-                target_keys = [k.strip().lower() for k in target_equip.split(",") if k.strip()]
+                target_key = target_equip.strip().lower()
                 filtered_bins = []
                 for bf in bin_files:
                     suit_name = re.sub(r"^\d+_equipGather\d+_fla\.MainTimeline_", "", bf.name)
                     suit_name = suit_name.replace("Class_dataClass.bin", "").replace(".bin", "")
-                    s_lower = suit_name.lower()
-                    if any(k == s_lower or k in s_lower for k in target_keys):
+                    if suit_name.lower() == target_key:
                         filtered_bins.append(bf)
                 bin_files = filtered_bins
-                logger.info("  按指定条件 '%s' 过滤后，待提取子装备数量: %d", target_equip, len(bin_files))
+                logger.info("  按指定装备 '%s' 精确过滤后，待提取子装备数量: %d", target_equip, len(bin_files))
                 if not bin_files:
-                    logger.warning("未找到匹配 '%s' 的装备/套装！", target_equip)
+                    logger.warning("未找到名称为 '%s' 的装备/套装！", target_equip)
                     return 0
 
             # 2. 多线程并行提取各子套装
