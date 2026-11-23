@@ -379,7 +379,8 @@ class AssetExtractor:
                         bf = futures[fut]
                         logger.warning("提取套装 %s 出错: %s", bf.name, exc)
 
-            logger.info("  ✓ EquipGather 完成导出: %d 个套装目录 (PNG+SVG)", total_suits)
+            dest_dir = (equip_output_base / target_equip) if (target_equip and total_suits > 0) else equip_output_base
+            logger.info("  ✓ EquipGather 完成导出: %d 个套装目录，保存至: %s", total_suits, dest_dir)
             return total_suits
 
     def _effect_sub_name(self, bin_file: Path) -> str:

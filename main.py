@@ -71,7 +71,8 @@ def swf_equip(
         output_assets_dir=output,
     )
     count = extractor.extract_equip_gather(target_equip=target_equip)
-    logger.info("装备图片提取完成，共导出 %d 套装备！", count)
+    dest_dir = (extractor.img_output_dir / "EquipGather" / target_equip) if (target_equip and count > 0) else (extractor.img_output_dir / "EquipGather")
+    logger.info("装备图片提取完成，共导出 %d 套装备！输出目录: %s", count, dest_dir)
 
 
 @swf_group.command("assets")
