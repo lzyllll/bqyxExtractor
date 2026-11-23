@@ -291,6 +291,8 @@ class AssetExtractor:
         sprite_dirs = [p for p in suit_export_dir.iterdir() if p.is_dir() and p.name.startswith("DefineSprite_")]
         for sdir in sprite_dirs:
             parts = sdir.name.split("_", 2)
+            # 1. 过滤无 symbol 的元件目录：FFDec 仅对有 symbol 的导出为 DefineSprite_<ID>_<symbolName>
+            # 若无 symbol 则目录名为 DefineSprite_<ID>（长度为 2），直接跳过
             if len(parts) < 3:
                 continue
             symbol_label = parts[2]
@@ -298,6 +300,7 @@ class AssetExtractor:
             if not png_file.exists():
                 continue
 
+            # 2. 仅对具有有效部位/时装 symbol 的图标进行标准规范化重命名与复制
             dest_stem = None
             if symbol_label in icon_mapping:
                 dest_stem = icon_mapping[symbol_label]
@@ -307,6 +310,7 @@ class AssetExtractor:
             elif symbol_label in ("chip", "heart", "weapon", "arms"):
                 dest_stem = symbol_label
 
+            # 3. 只有命中了对应 symbol 的有效图标才写入输出目录，排除人体骨骼与动作等无关帧
             if dest_stem:
                 (suit_dest_dir / f"{dest_stem}.png").write_bytes(png_file.read_bytes())
                 exported_files += 1
