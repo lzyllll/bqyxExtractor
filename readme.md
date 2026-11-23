@@ -42,7 +42,7 @@ ffdec = ffdec-cli.exe
 
 ```text
 bqyx_parser/
-  app.py                 总流程：下载 -> 提取 -> 清理
+  app.py                 SWF 下载与版本更新管理器 (SWFUpdater)
   downloader/            下载器，拉取游戏 SWF
   extractor/             提取器
     ffdec.py             调用 FFDec 导出脚本/图片/二进制

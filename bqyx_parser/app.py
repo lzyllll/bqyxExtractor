@@ -1,18 +1,17 @@
-"""应用入口：下载 SWF，提取资源，再交给解析器。"""
+"""SWF 资源下载与更新管理器。
+
+负责从 4399 下载主 SWF、检测游戏版本更新、解包主程序二进制、
+反编译基础 AS3 常量与 XML 数据包，并根据加载器配置下载补齐全部依赖 SWF。
+"""
 from __future__ import annotations
 
 import logging
-import shutil
 from pathlib import Path
 
 from bqyx_parser.downloader import SWFDownloader
 from bqyx_parser.extractor import (
     BqAS3Parser,
     FFDecExporter,
-    copy_equip_image,
-    copy_equip_svg,
-    copy_fashion_image,
-    copy_fashion_svg,
     extract_swf_urls,
     save_define_modules_json,
 )
@@ -21,8 +20,8 @@ from bqyx_parser.tools import FileProcessor, load_last_main_swf, load_last_versi
 logger = logging.getLogger(__name__)
 
 
-class BQYXParserApp:
-    """协调下载器、提取器和文件工具的主流程。"""
+class SWFUpdater:
+    """SWF 资源下载与版本更新管理器，仅负责 SWF 的下载、版本检测、反编译主包以及依赖更新。"""
 
     def __init__(
         self,
@@ -77,13 +76,7 @@ class BQYXParserApp:
 
         exporter = FFDecExporter(input_swf=game_swf_path, output_dir=main_game_compiled)
         # 只导出需要的 AS3，避免整包脚本全导出
-        exporter.export_scripts(
-            # select_classes=[
-            #     "Gaming",
-            #     "dataAll._data.ConstantDefine",
-            #     "dataAll._data.DefineGroup",
-            # ]
-        )
+        exporter.export_scripts()
 
         main_game_project = main_game_compiled / "scripts"
         version_dic = self.as3_extractor.extract_specific_constants(main_game_project)
@@ -127,54 +120,6 @@ class BQYXParserApp:
         await self.downloader.download_multiple(all_swf_urls)
         logger.info("所有SWF文件下载完毕")
 
-    def extract_equip_swf(self) -> None:
-        """从 equipGather 中拆出各装备 SWF。"""
-        equip_gather_dir = Path("swf_assets") / self.version / "swf" / "equip" / "equipGather"
-        if equip_gather_dir.exists():
-            shutil.rmtree(equip_gather_dir)
 
-        equip_gather_swf = self.file_processor.find_swf_by_prefix(
-            "equipGather",
-            Path("swf_assets") / self.version / "swf" / "equip",
-        )
-        FFDecExporter(input_swf=equip_gather_swf, output_dir=equip_gather_dir).export_binary_data()
-        self.file_processor.rename_bin_to_swf(equip_gather_dir)
-        self.file_processor.rename_equip_swf(equip_gather_dir)
-        logger.info("所有equip的swf反编译提取到%s", equip_gather_dir)
-
-    def compiled_all_equip_swf(self) -> None:
-        """反编译全部装备 SWF 到 compiled/equipGather。"""
-        output_dir = Path("compiled") / self.version / "equipGather"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        equip_gather_dir = Path("swf_assets") / self.version / "swf" / "equip" / "equipGather"
-        FFDecExporter(input_swf=equip_gather_dir, output_dir=output_dir).export_all()
-        self.file_processor.rename_equip_dir(output_dir)
-        logger.info("已将所有equip的swf内容反编译,输出到%s", output_dir)
-
-    def rename_all_equip_shapes(self) -> None:
-        """按 symbolClass 把装备图片改成英文名。"""
-        equip_gather_dir = Path("compiled") / self.version / "equipGather"
-        for equip in equip_gather_dir.iterdir():
-            self.file_processor.rename_images_and_svgs(equip)
-        logger.info("以将所有equip的图片和svg全部改为英文名")
-
-    def extract_all_equip_images(self) -> None:
-        """把装备图标和时装图标分类复制到 output/images。"""
-        output_dir = Path("output") / self.version / "images" / "equip"
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-
-        svg_fashion_dir = output_dir / "svg" / "fashionIcon"
-        svg_equip_dir = output_dir / "svg" / "equipIcon"
-        image_equip_dir = output_dir / "image" / "equipIcon"
-        image_fashion_dir = output_dir / "image" / "fashionIcon"
-        for path in (svg_fashion_dir, svg_equip_dir, image_equip_dir, image_fashion_dir):
-            path.mkdir(exist_ok=True, parents=True)
-
-        equip_gather_dir = Path("compiled") / self.version / "equipGather"
-        for equip in equip_gather_dir.iterdir():
-            copy_equip_svg(equip, svg_equip_dir)
-            copy_fashion_svg(equip, svg_fashion_dir)
-            copy_equip_image(equip, image_equip_dir)
-            copy_fashion_image(equip, image_fashion_dir)
-        logger.info("所有武器和时装图片，以分类到%s", output_dir)
+# 兼容旧名称
+BQYXParserApp = SWFUpdater

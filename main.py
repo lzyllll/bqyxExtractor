@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from bqyx_parser.app import BQYXParserApp
+from bqyx_parser.app import SWFUpdater
 from bqyx_parser.parser.registry import get_available_modules, run_all, run_module
 from bqyx_parser.tools import load_FFDEC_path, load_last_version
 
@@ -39,10 +39,10 @@ def swf_group() -> None:
 def swf_update(force: bool, swf_dir: str) -> None:
     """从 4399 下载主 SWF，导出 AS3/XML 二进制，并下载依赖资源 SWF。"""
     ffdec_path = load_FFDEC_path()
-    app = BQYXParserApp(ffdec_path=ffdec_path, swf_dir=swf_dir)
-    app.set_force_update(force)
+    updater = SWFUpdater(ffdec_path=ffdec_path, swf_dir=swf_dir)
+    updater.set_force_update(force)
     logger.info("开始更新 SWF 资源 (force=%s)...", force)
-    asyncio.run(app.update_all_swf())
+    asyncio.run(updater.update_all_swf())
     logger.info("SWF 资源更新完成！")
 
 
