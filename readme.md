@@ -84,6 +84,11 @@ resources/icons/         预置通用UI图标、强化星级与品质底框
 
 本工具提供基于 `click` 的全功能命令行界面，涵盖 SWF 资源下载、图片解析提取与 XML 多版本配置解析。
 
+> **前置依赖提示（重要）**：
+> 无论是**图片资源提取**（`swf equip` / `swf assets`）还是 **XML 转 JSON 配置解析**（`parse`），**都必须先执行 `python main.py swf update` 完整下载当前版本的 SWF 资源包并完成主程序反编译**！
+> - **图片解析依赖**：`swf_assets/<version>/` 下下载的各类 SWF 资源文件（如 `equipGather*.swf`、武器 SWF）以及 `compiled/<version>/scripts/Gaming.as` 模块加载清单；
+> - **JSON 解析依赖**：`compiled/<version>/xml/` 下反编译清洗生成的游戏原始 XML 配置文件。
+
 ### 1. 查看帮助与模块列表
 
 ```bash
@@ -94,19 +99,20 @@ python main.py --help
 python main.py parse --list
 ```
 
-### 2. SWF 下载与反编译 (`swf`)
+### 2. 第一步：SWF 下载与反编译 (`swf update`，前置必需)
 
 ```bash
-# 下载主 SWF，反编译 XML/AS3，并补齐依赖资源 SWF
+# 下载主 SWF，反编译 XML/AS3，并自动下载所有依赖资源 SWF（图片与 JSON 解析的基础）
 python main.py swf update
 
 # 强制重新下载（忽略本地已下载版本记录）
 python main.py swf update --force
 ```
 
-### 3. 图片资源解析
+### 3. 第二步：图片资源解析 (`swf equip` / `swf assets`)
 
 ```bash
+# 前提：已执行过 swf update 下载好 SWF
 # 使用 AssetExtractor 从 equipGather 高性能并行提取装备/时装部件图片
 python main.py swf equip
 
@@ -114,9 +120,10 @@ python main.py swf equip
 python main.py swf assets -v v3680
 ```
 
-### 4. XML 配置解析 (`parse`)
+### 4. 第三步：XML 配置解析为 JSON (`parse`)
 
 ```bash
+# 前提：已执行过 swf update 导出清洗好 XML
 # 一键全量解析当前最新版本的所有 17 个模块并生成 JSON
 python main.py parse
 

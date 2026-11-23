@@ -62,9 +62,6 @@ def swf_equip(version: str | None, swf_dir: str | None, output: str | None) -> N
         output_assets_dir=output,
     )
     count = extractor.extract_equip_gather()
-    rs_assets_path = Path("D:/bqyx/rs/assets")
-    if rs_assets_path.exists():
-        extractor.sync_to_target_assets(rs_assets_path)
     logger.info("装备图片提取完成，共导出 %d 套装备！", count)
 
 
