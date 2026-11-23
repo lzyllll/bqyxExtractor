@@ -48,19 +48,24 @@ def swf_update(force: bool, swf_dir: str) -> None:
 
 @swf_group.command("equip")
 @click.option("-v", "--version", default=None, help="游戏版本号 (默认: 最新记录版本)")
-@click.option("-d", "--swf-dir", default="swf_assets", help="SWF 存放目录 (默认: swf_assets)")
-def swf_equip(version: str | None, swf_dir: str) -> None:
-    """从 equipGather 提取各装备 SWF，反编译并分类导出装备/时装图片与SVG。"""
-    ffdec_path = load_FFDEC_path()
-    app = BQYXParserApp(ffdec_path=ffdec_path, swf_dir=swf_dir)
-    if version:
-        app.version = version
-    logger.info("正在提取与反编译装备 SWF 图片 (版本: %s)...", app.version)
-    app.extract_equip_swf()
-    app.compiled_all_equip_swf()
-    app.rename_all_equip_shapes()
-    app.extract_all_equip_images()
-    logger.info("装备图片提取完成！")
+@click.option("-d", "--swf-dir", default=None, help="SWF 存放目录 (默认: swf_assets/<version>)")
+@click.option("-o", "--output", default=None, help="输出 assets 目录 (默认: output/<version>/assets)")
+def swf_equip(version: str | None, swf_dir: str | None, output: str | None) -> None:
+    """从 equipGather 提取装备汇总包，反编译并分类导出装备/时装部件图片。"""
+    from bqyx_parser.extractor.asset_extractor import AssetExtractor
+
+    target_ver = version or load_last_version() or "v3690"
+    logger.info("正在使用 AssetExtractor 提取装备图片 (版本: %s)...", target_ver)
+    extractor = AssetExtractor(
+        version=target_ver,
+        swf_dir=swf_dir,
+        output_assets_dir=output,
+    )
+    count = extractor.extract_equip_gather()
+    rs_assets_path = Path("D:/bqyx/rs/assets")
+    if rs_assets_path.exists():
+        extractor.sync_to_target_assets(rs_assets_path)
+    logger.info("装备图片提取完成，共导出 %d 套装备！", count)
 
 
 @swf_group.command("assets")
@@ -82,24 +87,6 @@ def swf_assets(version: str | None, swf_dir: str | None, scripts_dir: str | None
     )
     extractor.run()
     logger.info("SWF 资源提取完成！")
-
-
-@swf_group.command("all")
-@click.option("-f", "--force", is_flag=True, help="强制重新下载更新")
-@click.option("-d", "--swf-dir", default="swf_assets", help="SWF 下载根目录")
-def swf_all(force: bool, swf_dir: str) -> None:
-    """一键执行全部 SWF 流程：拉取主SWF及依赖 + 提取反编译装备图片。"""
-    ffdec_path = load_FFDEC_path()
-    app = BQYXParserApp(ffdec_path=ffdec_path, swf_dir=swf_dir)
-    app.set_force_update(force)
-    logger.info("=== [1/2] 运行 SWF 资源拉取与主解析 ===")
-    asyncio.run(app.update_all_swf())
-    logger.info("=== [2/2] 提取反编译装备图片 ===")
-    app.extract_equip_swf()
-    app.compiled_all_equip_swf()
-    app.rename_all_equip_shapes()
-    app.extract_all_equip_images()
-    logger.info("全部 SWF 流程执行完毕！")
 
 
 # ---------------------------------------------------------------------------

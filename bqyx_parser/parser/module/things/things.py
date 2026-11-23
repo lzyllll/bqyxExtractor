@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 from bqyx_parser.parser.element.base import ElementParser

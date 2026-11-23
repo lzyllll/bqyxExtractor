@@ -107,7 +107,7 @@ python main.py swf update --force
 ### 3. 图片资源解析
 
 ```bash
-# 从 equipGather 提取并反编译装备/时装图片与 SVG
+# 使用 AssetExtractor 从 equipGather 高性能并行提取装备/时装部件图片
 python main.py swf equip
 
 # 根据 AS3 源码全自动提取对应版本的全量图片、装备部件与 UI 图标 (详见 docs/ASSET_EXTRACTION_GUIDE.md)
