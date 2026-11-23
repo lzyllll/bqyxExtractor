@@ -1,8 +1,11 @@
 """用 FFDec 从 SWF 导出脚本、图片和二进制数据。"""
+import logging
 import os
 import subprocess
 
 from bqyx_parser.tools.config import save_main_swf_info
+
+logger = logging.getLogger(__name__)
 
 
 class FFDecExporter:
@@ -56,7 +59,7 @@ class FFDecExporter:
         
         # 检查输入文件是否存在
         if not os.path.exists(self.input_swf):
-            print(f"输入文件不存在: {self.input_swf}")
+            logger.debug("输入文件不存在: %s", self.input_swf)
             return False
 
         # 处理导出类型参数
@@ -99,9 +102,9 @@ class FFDecExporter:
         if select_classes:
             class_str = ','.join(select_classes)
             cmd.extend(["-selectclass", class_str])
-            print(f"正在导出 {self.input_swf} 的 {export_types_str} 资源中指定的类到 {self.output_dir}...")
+            logger.debug("正在导出 %s 的 %s 资源中指定的类到 %s...", self.input_swf, export_types_str, self.output_dir)
         else:
-            print(f"正在导出 {self.input_swf} 的 {export_types_str} 资源到 {self.output_dir}...")
+            logger.debug("正在导出 %s 的 %s 资源到 %s...", self.input_swf, export_types_str, self.output_dir)
         
         # 添加导出参数
         cmd.extend(["-export", export_types_str, self.output_dir, self.input_swf])
@@ -109,23 +112,23 @@ class FFDecExporter:
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
-            print("导出完成!")
+            logger.debug("导出完成!")
             return True
 
         except subprocess.CalledProcessError as e:
-            print(f"执行 ffdec-cli.exe 时发生错误: {e}")
-            print(f"Return code: {e.returncode}")
+            logger.debug("执行 ffdec-cli.exe 时发生错误: %s", e)
+            logger.debug("Return code: %s", e.returncode)
             if e.stdout:
-                print(f"STDOUT: {e.stdout}")
+                logger.debug("STDOUT: %s", e.stdout)
             if e.stderr:
-                print(f"STDERR: {e.stderr}")
+                logger.debug("STDERR: %s", e.stderr)
             return False
         except FileNotFoundError:
             #  不记录版本号
             save_main_swf_info('None')
             raise ValueError(f" {self.ffdec_path}无法运行，ffdec-cli设置错误")
         except Exception as e:
-            print(f"发生未预期的错误: {e}")
+            logger.debug("发生未预期的错误: %s", e)
             return False
 
     def export_scripts(self, select_classes=None):
