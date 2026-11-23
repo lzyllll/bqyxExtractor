@@ -116,6 +116,10 @@ python main.py swf update --force
 # 使用 AssetExtractor 从 equipGather 高性能并行提取装备/时装部件图片
 python main.py swf equip
 
+# 指定解析特定装备或套装 (支持 -e/--equip 或 -n/--name，支持模糊匹配)
+python main.py swf equip -e goshawkSuit
+python main.py swf equip -n goshawk
+
 # 根据 AS3 源码全自动提取对应版本的全量图片、装备部件与 UI 图标 (详见 docs/ASSET_EXTRACTION_GUIDE.md)
 python main.py swf assets -v v3680
 ```

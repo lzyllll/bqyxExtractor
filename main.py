@@ -50,18 +50,27 @@ def swf_update(force: bool, swf_dir: str) -> None:
 @click.option("-v", "--version", default=None, help="游戏版本号 (默认: 最新记录版本)")
 @click.option("-d", "--swf-dir", default=None, help="SWF 存放目录 (默认: swf_assets/<version>)")
 @click.option("-o", "--output", default=None, help="输出 assets 目录 (默认: output/<version>/assets)")
-def swf_equip(version: str | None, swf_dir: str | None, output: str | None) -> None:
+@click.option("-e", "--equip", "-n", "--name", "target_equip", default=None, help="指定解析的装备/套装名称 (支持模糊匹配，默认全部)")
+def swf_equip(
+    version: str | None,
+    swf_dir: str | None,
+    output: str | None,
+    target_equip: str | None,
+) -> None:
     """从 equipGather 提取装备汇总包，反编译并分类导出装备/时装部件图片。"""
     from bqyx_parser.extractor.asset_extractor import AssetExtractor
 
     target_ver = version or load_last_version() or "v3690"
-    logger.info("正在使用 AssetExtractor 提取装备图片 (版本: %s)...", target_ver)
+    if target_equip:
+        logger.info("正在使用 AssetExtractor 提取指定装备 '%s' 图片 (版本: %s)...", target_equip, target_ver)
+    else:
+        logger.info("正在使用 AssetExtractor 提取装备图片 (版本: %s)...", target_ver)
     extractor = AssetExtractor(
         version=target_ver,
         swf_dir=swf_dir,
         output_assets_dir=output,
     )
-    count = extractor.extract_equip_gather()
+    count = extractor.extract_equip_gather(target_equip=target_equip)
     logger.info("装备图片提取完成，共导出 %d 套装备！", count)
 
 
